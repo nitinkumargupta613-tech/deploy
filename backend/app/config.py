@@ -41,11 +41,24 @@ MODEL_VERSION = os.getenv("CIVICSENSE_MODEL_VERSION", "minilm-l6-v2@2026-10")
 CLIP_ENABLED = os.getenv("CIVICSENSE_CLIP_ENABLED", "0") == "1"
 CLIP_MODEL = os.getenv("CIVICSENSE_CLIP_MODEL", "openai/clip-vit-base-patch32")
 
-CORS_ORIGINS = [
-    o.strip()
-    for o in os.getenv("CIVICSENSE_CORS_ORIGINS", "http://localhost:5173").split(",")
-    if o.strip()
+
+_default_origins = [
+    "http://localhost:5173",
+    "https://deploy-k5hk.vercel.app",
 ]
+
+_env_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CIVICSENSE_CORS_ORIGINS", ""
+    ).split(",")
+    if origin.strip()
+]
+
+CORS_ORIGINS = list(dict.fromkeys(
+    _default_origins + _env_origins
+))
+
 
 # Campus used by the seed data (IIT Bombay, Powai) - keeps the map readable.
 CAMPUS_CENTER = (19.0760, 72.8777)
