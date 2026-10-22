@@ -1,0 +1,65 @@
+# Render blueprint for CivicSense.
+#
+# Deploy everything with one click:
+#   1. Push this repository to GitHub
+#   2. Render dashboard -> New -> Blueprint
+#   3. Choose the repository, Render reads this file
+#   4. Fill in the two values marked "sync: false" and apply
+#
+# After the first apply, every push to main rebuilds and redeploys both
+# services automatically (Auto-Deploy is on by default for a blueprint).
+
+services:
+  # ---------------------------------------------------------------------------
+  # The FastAPI service
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: civicsense-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Neon (or any other managed Postgres with PostGIS). Fill this in.
+      - key: DATABASE_URL
+        sync: false
+      # The web app's address. Render gives it after the first deploy, for
+      # example https://civicsense-web.onrender.com - add it here and the
+      # next deploy will allow the browser to call the API.
+      - key: CIVICSENSE_CORS_ORIGINS
+        sync: false
+      # The photo classifier. Off by default because the image gets much
+      # larger; build the service with the INSTALL_CLIP=1 build argument to
+      # turn it on.
+      - key: CIVICSENSE_CLIP_ENABLED
+        value: "0"
+      - key: CIVICSENSE_CLIP_MODEL
+        value: openai/clip-vit-base-patch32
+      - key: CIVICSENSE_MODEL_VERSION
+        value: minilm-l6-v2@2026-10
+      - key: CIVICSENSE_EMBED_MODEL
+        value: all-MiniLM-L6-v2
+
+  # ---------------------------------------------------------------------------
+  # The React web app, served as static files
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: civicsense-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm run build
+    staticPublishPath: ./dist
+    pullRequestPreviewsEnabled: true
+    autoDeploy: true
+    envVars:
+      # Where the browser should send its API calls.
+      - key: VITE_API_URL
+        sync: false
+    # Client side routing: /dashboard, /login and /ticket must serve the app
+    # instead of returning a 404.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
